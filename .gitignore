@@ -1,0 +1,5 @@
+/hex/*
+/pca10056/*
+/pca10040/s132/armgcc/_build/*
+*.swp
+*.swo
