@@ -48,6 +48,7 @@ SRC_FILES += \
   $(SDK_ROOT)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
 	$(SDK_ROOT)/components/drivers_nrf/uart/nrf_drv_uart.c \
 	$(SDK_ROOT)/components/libraries/bsp/bsp_nfc.c \
+	$(PROJ_DIR)/location.c \
 	$(PROJ_DIR)/twi.c \
   $(PROJ_DIR)/main.c \
   $(SDK_ROOT)/external/segger_rtt/RTT_Syscalls_GCC.c \
