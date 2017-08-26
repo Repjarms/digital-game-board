@@ -78,6 +78,8 @@ void ble_loc_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
     return;
   }
 
+  NRF_LOG_INFO("%d\n", p_ble_evt);
+
   ble_loc_t * p_loc = (ble_loc_t *)p_context;
 
   switch (p_ble_evt->header.evt_id)
@@ -142,8 +144,11 @@ static uint32_t location_char_add(ble_loc_t * p_loc, const ble_loc_init_t * p_lo
 
   memset(&attr_md, 0, sizeof(attr_md));
 
-  attr_md.read_perm   = p_loc_init->loc_char_attr_md.read_perm;
-  attr_md.write_perm  = p_loc_init->loc_char_attr_md.write_perm;
+  ble_gap_conn_sec_mode_t perm_test;
+  BLE_GAP_CONN_SEC_MODE_SET_OPEN(&perm_test);
+
+  attr_md.read_perm   = perm_test; //p_loc_init->loc_char_attr_md.read_perm;
+  attr_md.write_perm  = perm_test; //p_loc_init->loc_char_attr_md.write_perm;
   attr_md.vloc        = BLE_GATTS_VLOC_STACK;
   attr_md.rd_auth     = 0;
   attr_md.wr_auth     = 0;
