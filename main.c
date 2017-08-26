@@ -376,6 +376,9 @@ static void services_init(void)
   /* Initialize Location Service */
   err_code = ble_loc_init(&p_loc, &p_loc_init);
   APP_ERROR_CHECK(err_code);
+
+  err_code = ble_loc_location_update(&p_loc, 15);
+  NRF_LOG_INFO("%d\n", err_code);
 }
 
 
