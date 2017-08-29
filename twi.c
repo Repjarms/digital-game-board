@@ -59,7 +59,7 @@ void twi_init(void)
     .scl                    = 3,
     .sda                    = 4,
     .frequency              = NRF_TWI_FREQ_100K,
-    .interrupt_priority     = APP_IRQ_PRIORITY_HIGH,
+    .interrupt_priority     = APP_IRQ_PRIORITY_LOW,
     .clear_bus_init         = false
   };
 
@@ -72,13 +72,15 @@ void twi_init(void)
 /**
  * @brief Function for reading data from temperature sensor.
  */
-void read_piece_data()
+ret_code_t read_piece_data()
 {
   NRF_LOG_INFO("Read piece location\n");
   twi_xfer_done = false;
 
   ret_code_t err_code = nrf_drv_twi_rx(&m_twi, TWI_SLAVE_ADDR, &m_location, sizeof(m_location));
   APP_ERROR_CHECK(err_code);
+
+  return err_code;
 }
 
 
