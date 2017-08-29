@@ -112,6 +112,8 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
+#define TIMER_TWI_SCAN_UPDATE APP_TIMER_TICKS(1000)
+APP_TIMER_DEF(m_timer_twi_scan_id);
 
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
@@ -132,6 +134,9 @@ static ble_uuid_t m_adv_uuids[] =                                               
   {BLE_UUID_LOCATION_CHAR, BLE_UUID_TYPE_BLE}
 };
 
+
+/* Test code */
+static bool scan_test = false;
 
 static void advertising_start(bool erase_bonds);
 
@@ -254,6 +259,11 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 }
 
 
+static void timer_twi_scan_handler(void * p_context)
+{
+  scan_test = true;
+}
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
@@ -262,6 +272,9 @@ static void timers_init(void)
 {
   // Initialize timer module.
   ret_code_t err_code = app_timer_init();
+  APP_ERROR_CHECK(err_code);
+
+  err_code = app_timer_create(&m_timer_twi_scan_id, APP_TIMER_MODE_REPEATED, timer_twi_scan_handler);
   APP_ERROR_CHECK(err_code);
 
   // Create timers.
@@ -513,6 +526,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
       NRF_LOG_INFO("Disconnected.");
       err_code = bsp_indication_set(BSP_INDICATE_IDLE);
       APP_ERROR_CHECK(err_code);
+      
+      err_code = app_timer_stop(m_timer_twi_scan_id);
+      APP_ERROR_CHECK(err_code);
+
       break;
 
     case BLE_GAP_EVT_CONNECTED:
@@ -520,6 +537,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
       err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
       APP_ERROR_CHECK(err_code);
       m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+
+      err_code = app_timer_start(m_timer_twi_scan_id, TIMER_TWI_SCAN_UPDATE, NULL);
+      APP_ERROR_CHECK(err_code);
+
       break;
 
 #if defined(S132)
@@ -796,6 +817,7 @@ static void advertising_start(bool erase_bonds)
 int main(void)
 {
   bool erase_bonds;
+  ret_code_t err_code;
 
   // Initialize.
   log_init();
@@ -824,7 +846,12 @@ int main(void)
       power_manage();
     }
 
-    //read_piece_data();
+    if (scan_test == true)
+    {
+      err_code = read_piece_data();
+      APP_ERROR_CHECK(err_code);
+      scan_test = false;
+    }
   }
 }
 
