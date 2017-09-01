@@ -7,8 +7,8 @@
 #include "nrf_drv_twi.h"
 #include "nrf_delay.h"
 
-
 #include "twi.h"
+#include "piece_ctrl.h"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
@@ -25,9 +25,10 @@ static uint8_t arr_size = sizeof(m_location) / sizeof(m_location[0]);
 
 static volatile bool twi_xfer_done = false;
 
-__STATIC_INLINE void data_handler(uint8_t location)
+__STATIC_INLINE void data_handler(uint8_t * location)
 {
-  NRF_LOG_INFO("Location is %d\n", location);
+  NRF_LOG_INFO("Location is x: %d\t y: %d\t id: %d\n", location[0], location[1], location[2]);
+  
 }
 
 /**
@@ -40,7 +41,7 @@ void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
     case NRF_DRV_TWI_EVT_DONE:
       if (p_event->xfer_desc.type == NRF_DRV_TWI_XFER_RX) // if event is receive
       {
-        data_handler(m_location[0]);
+        data_handler(m_location);
       }
       twi_xfer_done = true;
       break;
@@ -73,14 +74,17 @@ void twi_init(void)
 /**
  * @brief Function for reading data from temperature sensor.
  */
-ret_code_t read_piece_data()
+ret_code_t read_piece_data(piece_t * piece)
 {
   NRF_LOG_INFO("Read piece location\n");
   NRF_LOG_INFO("Size of %d\n", sizeof(m_location));
   twi_xfer_done = false;
 
-  ret_code_t err_code = nrf_drv_twi_rx(&m_twi, TWI_SLAVE_ADDR, &m_location[0], arr_size);
+  ret_code_t err_code = nrf_drv_twi_rx(&m_twi, piece->id, &m_location[0], arr_size);
   APP_ERROR_CHECK(err_code);
+
+  piece->x_coord = m_location[0];
+  piece->y_coord = m_location[1];
 
   return err_code;
 }
