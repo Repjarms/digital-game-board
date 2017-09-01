@@ -77,6 +77,7 @@
 
 #include "location.h"
 #include "twi.h"
+#include "piece_ctrl.h"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
@@ -831,6 +832,7 @@ int main(void)
   conn_params_init();
   peer_manager_init();
   twi_init();
+  pieces_init();
 
   // Start execution.
   NRF_LOG_INFO("Template example started.");
@@ -848,7 +850,7 @@ int main(void)
 
     if (scan_test == true)
     {
-      err_code = read_piece_data();
+      err_code = update_location();
       APP_ERROR_CHECK(err_code);
       scan_test = false;
     }
