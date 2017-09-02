@@ -20,7 +20,17 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/util/app_error.c \
   $(SDK_ROOT)/components/libraries/util/app_error_weak.c \
   $(SDK_ROOT)/components/libraries/scheduler/app_scheduler.c \
-  $(SDK_ROOT)/components/libraries/timer/app_timer.c \
+  $(SDK_ROOT)/components/libraries/timer/app_timer_freertos.c \
+  $(SDK_ROOT)/external/freertos/source/croutine.c \
+  $(SDK_ROOT)/external/freertos/source/event_groups.c \
+  $(SDK_ROOT)/external/freertos/source/portable/MemMang/heap_1.c \
+  $(SDK_ROOT)/external/freertos/source/list.c \
+  $(SDK_ROOT)/external/freertos/portable/GCC/nrf52/port.c \
+  $(SDK_ROOT)/external/freertos/portable/CMSIS/nrf52/port_cmsis.c \
+  $(SDK_ROOT)/external/freertos/portable/CMSIS/nrf52/port_cmsis_systick.c \
+  $(SDK_ROOT)/external/freertos/source/queue.c \
+  $(SDK_ROOT)/external/freertos/source/tasks.c \
+  $(SDK_ROOT)/external/freertos/source/timers.c \
   $(SDK_ROOT)/components/libraries/util/app_util_platform.c \
   $(SDK_ROOT)/components/libraries/crc16/crc16.c \
   $(SDK_ROOT)/components/libraries/fds/fds.c \
@@ -77,9 +87,11 @@ SRC_FILES += \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh.c \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh_ble.c \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh_soc.c \
+  $(SDK_ROOT)/components/softdevice/common/nrf_sdh_freertos.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
+	../config \
   $(SDK_ROOT)/components/drivers_nrf/comp \
 	$(SDK_ROOT)/components/drivers_nrf/twi_master \
   $(SDK_ROOT)/components/libraries/experimental_cli \
@@ -122,6 +134,11 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/ble/ble_services/ble_ans_c \
   $(SDK_ROOT)/components/libraries/slip \
   $(SDK_ROOT)/components/libraries/mem_manager \
+	$(SDK_ROOT)/external/freertos/config \
+  $(SDK_ROOT)/external/freertos/source/include \
+	$(SDK_ROOT)/external/freertos/config \
+	$(SDK_ROOT)/external/freertos/portable/GCC/nrf52 \
+	$(SDK_ROOT)/external/freertos/portable/CMSIS/nrf52 \
   $(SDK_ROOT)/external/segger_rtt \
   $(SDK_ROOT)/components/libraries/usbd/class/cdc \
   $(SDK_ROOT)/components/drivers_nrf/hal \
