@@ -67,7 +67,15 @@
 #include "nrf_sdh.h"
 #include "nrf_sdh_soc.h"
 #include "nrf_sdh_ble.h"
+#include "nrf_sdh_freertos.h"
+
+/* FreeRTOS and Timer Includes */
 #include "app_timer.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "nrf_drv_clock.h"
+
 #include "fds.h"
 #include "peer_manager.h"
 #include "bsp_btn_ble.h"
@@ -135,11 +143,13 @@ static ble_uuid_t m_adv_uuids[] =                                               
   {BLE_UUID_LOCATION_CHAR, BLE_UUID_TYPE_BLE}
 };
 
+/* Initialize Threads, Timers, and Tasks for FreeRTOS */
+static TaskHandle_t m_logger_thread;
 
 /* Test code */
 static bool scan_test = false;
 
-static void advertising_start(bool erase_bonds);
+static void advertising_start(void * erase_bonds);
 
 
 /**@brief Callback function for asserts in the SoftDevice.
@@ -797,8 +807,10 @@ static void power_manage(void)
 
 /**@brief Function for starting advertising.
 */
-static void advertising_start(bool erase_bonds)
+static void advertising_start(void * p_erase_bonds)
 {
+  bool erase_bonds = *(bool*)p_erase_bonds;
+
   if (erase_bonds == true)
   {
     delete_bonds();
@@ -812,16 +824,51 @@ static void advertising_start(bool erase_bonds)
   }
 }
 
+#if NRF_LOG_ENABLED
+static void logger_thread(void * arg)
+{
+  UNUSED_PARAMETER(arg);
+
+  while(1)
+  {
+    NRF_LOG_FLUSH();
+
+    vTaskSuspend(NULL);
+  }
+}
+#endif
+
+void vApplicationIdleHook(void)
+{
+  vTaskResume(m_logger_thread);
+}
+
+static void clock_init(void)
+{
+  ret_code_t err_code = nrf_drv_clock_init();
+  APP_ERROR_CHECK(err_code);
+}
 
 /**@brief Function for application main entry.
 */
 int main(void)
 {
   bool erase_bonds;
-  ret_code_t err_code;
 
-  // Initialize.
+  // Initialize clock for FreeRTOS
+  clock_init();
+
+  // Initialize Logger
   log_init();
+
+#if NRF_LOG_ENABLED
+    // Start execution.
+    if (pdPASS != xTaskCreate(logger_thread, "LOGGER", 256, NULL, 1, &m_logger_thread))
+    {
+        APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+    }
+#endif
+
   timers_init();
   buttons_leds_init(&erase_bonds);
   ble_stack_init();
@@ -838,7 +885,13 @@ int main(void)
   NRF_LOG_INFO("Template example started.");
   application_timers_start();
 
-  advertising_start(erase_bonds);
+  // Create a FreeRTOS task for the BLE stack.
+  // The task will run advertising_start() before entering the loop
+  nrf_sdh_freertos_init(advertising_start, &erase_bonds);
+  //advertising_start(erase_bonds);
+
+  // Start FreeRTOS scheduler
+  vTaskStartScheduler();
 
   // Enter main loop.
   for (;;)
@@ -848,12 +901,14 @@ int main(void)
       power_manage();
     }
 
+    /*
     if (scan_test == true)
     {
       err_code = update_location();
       APP_ERROR_CHECK(err_code);
       scan_test = false;
     }
+    */
   }
 }
 
