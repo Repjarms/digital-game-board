@@ -241,4 +241,11 @@ standard names - or at least those used in the unmodified vector table. */
      */
 #define configUSE_DISABLE_TICK_AUTO_CORRECTION_DEBUG     0
 
+// If we are using Systemview, we want to include it's version of FreeRTOS
+#ifdef NRF_LOG_USES_SYSVIEW
+  #if (NRF_LOG_USES_SYSVIEW == 1)
+    #include "SEGGER_SYSVIEW_FreeRTOS.h" 
+  #endif
+#endif
+
 #endif /* FREERTOS_CONFIG_H */

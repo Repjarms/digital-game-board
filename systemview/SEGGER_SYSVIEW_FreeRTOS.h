@@ -88,7 +88,7 @@ Notes:
 *
 **********************************************************************
 */
-#define apiID_OFFSET                              (32u)
+#define apiID_OFFSET                              (232u)
 
 #define apiID_VTASKALLOCATEMPUREGIONS             (1u)
 #define apiID_VTASKDELETE                         (2u)
