@@ -1,11 +1,13 @@
 /* Source file for Location BLE service */
 
 #include <string.h>
+#include <stdbool.h>
 #include "sdk_common.h"
 #include "location.h"
 #include "ble_srv_common.h"
 
 #include "nrf_log.h"
+#include "piece_ctrl.h"
 
 #define INVALID_LOCATION 255
 
@@ -116,9 +118,9 @@ static uint32_t location_char_add(ble_loc_t * p_loc, const ble_loc_init_t * p_lo
   ble_gatts_attr_t    attr_char_value;
   ble_uuid_t          ble_uuid;
   ble_gatts_attr_md_t attr_md;
-  uint8_t             initial_loc;
+  piece_t *           initial_loc; // TODO: change to piece_t *
   uint8_t             encoded_report_ref[BLE_SRV_ENCODED_REPORT_REF_LEN];
-  uint8_t             init_len;
+  uint8_t             init_len; // TODO: change to piece_t *
 
   // Add Location characteristic
   if (p_loc->is_notification_supported)
@@ -154,16 +156,17 @@ static uint32_t location_char_add(ble_loc_t * p_loc, const ble_loc_init_t * p_lo
   attr_md.wr_auth     = 0;
   attr_md.vlen        = 0;
 
-  initial_loc = p_loc_init->initial_loc;
+  // initialize initial location
+  initial_loc = get_current_location();
 
   memset(&attr_char_value, 0, sizeof(attr_char_value));
 
   attr_char_value.p_uuid    = &ble_uuid;
   attr_char_value.p_attr_md = &attr_md;
-  attr_char_value.init_len  = sizeof(uint8_t);
+  attr_char_value.init_len  = sizeof(initial_loc[0]) * 6; // TODO: change to piece_t size
   attr_char_value.init_offs = 0;
-  attr_char_value.max_len   = sizeof(uint8_t);
-  attr_char_value.p_value   = &initial_loc;
+  attr_char_value.max_len   = sizeof(initial_loc[0]) * 6; // TODO: change to piece_t size
+  attr_char_value.p_value   = (uint8_t *)initial_loc;
 
   // Add the service
   err_code = sd_ble_gatts_characteristic_add(p_loc->service_handle, &char_md, &attr_char_value, &p_loc->loc_handles);
@@ -230,7 +233,7 @@ uint32_t ble_loc_init(ble_loc_t * p_loc, const ble_loc_init_t * p_loc_init)
   p_loc->evt_handler               = p_loc_init->evt_handler;
   p_loc->conn_handle               = BLE_CONN_HANDLE_INVALID;
   p_loc->is_notification_supported = p_loc_init->support_notification;
-  p_loc->location_last             = INVALID_LOCATION;
+  p_loc->location_last             = get_current_location();
 
   // Add service
   BLE_UUID_BLE_ASSIGN(ble_uuid, BLE_UUID_LOCATION_CHAR);
@@ -245,25 +248,44 @@ uint32_t ble_loc_init(ble_loc_t * p_loc, const ble_loc_init_t * p_loc_init)
   return location_char_add(p_loc, p_loc_init);
 }
 
-uint32_t ble_loc_location_update(ble_loc_t * p_loc, uint8_t location)
+uint32_t ble_loc_location_update(ble_loc_t * p_loc, piece_t * location)
 {
+  bool hasLocChanged = false;
+  uint8_t locArrSize = 5;
+
+
   if (p_loc == NULL)
   {
     return NRF_ERROR_NULL;
+  }
+
+  // check if any piece location has changed
+  for (int i=0; i<locArrSize; i++)
+  {
+    if (location[i].x_coord != p_loc->location_last[i].x_coord)
+    {
+      hasLocChanged = true;
+      break;
+    }
+    else if (location[i].y_coord != p_loc->location_last[i].y_coord)
+    {
+      hasLocChanged = true;
+      break;
+    }
   }
 
   uint32_t err_code = NRF_SUCCESS;
   ble_gatts_value_t gatts_value;
 
   // TODO: refactor everything under this line to actually match location
-  if (location != p_loc->location_last)
+  if (hasLocChanged == true)
   {
     // Initialize value struct
     memset(&gatts_value, 0, sizeof(gatts_value));
 
-    gatts_value.len     = sizeof(uint8_t);
+    gatts_value.len     = sizeof(location[0]) * 6;
     gatts_value.offset  = 0;
-    gatts_value.p_value = &location;
+    gatts_value.p_value = (uint8_t *)location;
 
     // Update database
     err_code = sd_ble_gatts_value_set(p_loc->conn_handle, p_loc->loc_handles.value_handle, &gatts_value);
@@ -271,7 +293,7 @@ uint32_t ble_loc_location_update(ble_loc_t * p_loc, uint8_t location)
     if (err_code == NRF_SUCCESS)
     {
       // Save new location value
-      p_loc->location_last = location;
+      p_loc->location_last = location; // TODO: may need to loop through and assign
     }
     else
     {

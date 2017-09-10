@@ -4,10 +4,12 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "piece_ctrl.h"
 #include "ble.h"
 #include "sdk_common.h"
 #include "ble_srv_common.h"
 #include "nrf_sdh_ble.h"
+
 
 #define BLE_UUID_LOCATION_SERVICE 0x3dd72e4dfb8d4a938d4b07c4eff1a7a7
 #define BLE_UUID_LOCATION_CHAR 0xa7a7
@@ -40,7 +42,7 @@ typedef struct
   ble_loc_evt_handler_t         evt_handler;
   bool                          support_notification;
   ble_srv_report_ref_t *        p_report_ref;
-  uint8_t                       initial_loc;
+  piece_t *                     initial_loc;
   ble_srv_cccd_security_mode_t  loc_char_attr_md;
   ble_gap_conn_sec_mode_t       loc_report_read_perm;
 } ble_loc_init_t;
@@ -52,7 +54,7 @@ struct ble_loc_s
   uint16_t                      service_handle;
   ble_gatts_char_handles_t      loc_handles;
   uint16_t                      report_ref_handle;
-  uint8_t                       location_last;
+  piece_t *                     location_last;
   uint16_t                      conn_handle;
   bool                          is_notification_supported;
 };
@@ -91,6 +93,6 @@ void ble_bas_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
  * @return        NRF_SUCCESS   on success, otherwise an error code
  */
 
-uint32_t ble_loc_location_update(ble_loc_t * p_loc, uint8_t location);
+uint32_t ble_loc_location_update(ble_loc_t * p_loc, piece_t * location);
 
 #endif /* end of include guard: LOCATION_H_GF6CR0AG */
