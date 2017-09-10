@@ -824,16 +824,28 @@ static void clock_init(void)
 static void twi_task_function(void * pvParameter)
 {
   UNUSED_PARAMETER(pvParameter);
-  volatile uint8_t test = 0;
+  uint32_t ulNotificationValue;
+  const TickType_t xMaxBlockTime = pdMS_TO_TICKS(200);
 
   while (true)
   {
-    test = test + 1;
-
-    if (test == 100)
+    // call update piece location which calls twi driver
+    update_piece_location(0, &m_twi_handle);
+    
+    // notify wait for isr to continue
+    ulNotificationValue = ulTaskNotifyTake(pdFALSE, xMaxBlockTime); 
+    
+    // continue on with our day
+    if (ulNotificationValue == 1)
     {
-      NRF_LOG_INFO("test is 100\n");
+      // good
+    } 
+    else
+    {
+      // bad
     }
+
+    // delay for 300 ms
     vTaskDelay(300);
   }
 }
