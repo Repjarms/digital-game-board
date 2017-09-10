@@ -6,6 +6,9 @@
 #include "location.h"
 #include "twi.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 
@@ -25,7 +28,7 @@ piece_t piece_arr[6];
 void pieces_init()
 {
   /* Init first three pieces */
-  piece_t piece_one   = { .x_coord = 200, .y_coord = 200, .id = 0x03 };
+  piece_t piece_one   = { .x_coord = 200, .y_coord = 200, .id = 0x01 };
   piece_t piece_two   = { .x_coord = 200, .y_coord = 200, .id = 0x03 };
   piece_t piece_three = { .x_coord = 200, .y_coord = 200, .id = 0x03 };
 
@@ -43,34 +46,12 @@ void pieces_init()
   piece_arr[5] = piece_six;
 }
 
-/**@brief Find the address of a piece
- *
- */
-/*
-static void find_piece_address(piece_t * piece)
+void update_piece_location(uint8_t * idx, TaskHandle_t task)
 {
-  piece->id = 0x01; 
-}
-*/
+  piece_t * piece = &piece_arr[*idx];
 
-static ret_code_t update_piece_location(piece_t * piece)
-{
   ret_code_t err_code;
   err_code = read_piece_data(piece);
   APP_ERROR_CHECK(err_code); 
-  NRF_LOG_INFO("Piece Data: %d\n", piece->x_coord);
-
-  return err_code;
-}
-
-ret_code_t update_location()
-{
-  ret_code_t err_code;
-
-  for (int i=0; i<PIECE_MAX; i++)
-  {
-    err_code = update_piece_location(&piece_arr[i]);
-  }
-
-  return NRF_SUCCESS;
+  //NRF_LOG_INFO("Piece Data: %d\n", piece->x_coord);
 }

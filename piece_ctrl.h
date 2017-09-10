@@ -7,6 +7,9 @@
 #include "location.h"
 #include "twi.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 
@@ -19,6 +22,6 @@ typedef struct
 
 void pieces_init();
 
-ret_code_t update_location();
+void update_piece_location(uint8_t * idx, TaskHandle_t task);
 
 #endif /* end of include guard: PIECE_CTRL_H_XQWI1BV4 */
