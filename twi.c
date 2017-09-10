@@ -45,12 +45,7 @@ void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
   switch (p_event->type)
   {
     case NRF_DRV_TWI_EVT_DONE:
-      /*
-      if (p_event->xfer_desc.type == NRF_DRV_TWI_XFER_RX) // if event is receive
-      {
-        data_handler(m_location);
-      }
-      */
+
       twi_xfer_done = true;
       
       BaseType_t xHigherPriorityTaskWoken = pdFALSE;
