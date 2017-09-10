@@ -67,7 +67,15 @@
 #include "nrf_sdh.h"
 #include "nrf_sdh_soc.h"
 #include "nrf_sdh_ble.h"
+#include "nrf_sdh_freertos.h"
+
+/* FreeRTOS and Timer Includes */
 #include "app_timer.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "nrf_drv_clock.h"
+
 #include "fds.h"
 #include "peer_manager.h"
 #include "bsp_btn_ble.h"
@@ -77,10 +85,17 @@
 
 #include "location.h"
 #include "twi.h"
+#include "piece_ctrl.h"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+#ifdef NRF_LOG_USES_SYSVIEW
+#if (NRF_LOG_USES_SYSVIEW == 1)
+#include "SEGGER_SYSVIEW.h" 
+#include "sysview_softdevice.h"
+#endif
+#endif
 
 #define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2    /**< Reply when unsupported features are requested. */
 
@@ -112,8 +127,8 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
-#define TIMER_TWI_SCAN_UPDATE APP_TIMER_TICKS(1000)
-APP_TIMER_DEF(m_timer_twi_scan_id);
+/* Piece management variables */
+uint8_t piece_idx = 0;
 
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
@@ -124,8 +139,8 @@ static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        
  *  BLE_XYZ_DEF(m_xyz);
  */
 
-  ble_loc_init_t     p_loc_init;
-  ble_loc_t          p_loc;
+ble_loc_init_t     p_loc_init;
+ble_loc_t          p_loc;
 
 // YOUR_JOB: Use UUIDs for service(s) used in your application.
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
@@ -134,12 +149,11 @@ static ble_uuid_t m_adv_uuids[] =                                               
   {BLE_UUID_LOCATION_CHAR, BLE_UUID_TYPE_BLE}
 };
 
+/* Initialize Threads, Timers, and Tasks for FreeRTOS */
+static TaskHandle_t m_logger_thread;
+static TaskHandle_t m_twi_handle;
 
-/* Test code */
-static bool scan_test = false;
-
-static void advertising_start(bool erase_bonds);
-
+static void advertising_start(void * erase_bonds);
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -258,35 +272,15 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
   }
 }
 
-
-static void timer_twi_scan_handler(void * p_context)
-{
-  scan_test = true;
-}
-
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
  */
 static void timers_init(void)
 {
-  // Initialize timer module.
-  ret_code_t err_code = app_timer_init();
-  APP_ERROR_CHECK(err_code);
 
-  err_code = app_timer_create(&m_timer_twi_scan_id, APP_TIMER_MODE_REPEATED, timer_twi_scan_handler);
-  APP_ERROR_CHECK(err_code);
-
-  // Create timers.
-
-  /* YOUR_JOB: Create any timers to be used by the application.
-     Below is an example of how to create a timer.
-     For every new timer needed, increase the value of the macro APP_TIMER_MAX_TIMERS by
-     one.
-     ret_code_t err_code;
-     err_code = app_timer_create(&m_app_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
-     APP_ERROR_CHECK(err_code); */
 }
+
 
 
 /**@brief Function for the GAP initialization.
@@ -454,10 +448,6 @@ static void conn_params_init(void)
 */
 static void application_timers_start(void)
 {
-  /* YOUR_JOB: Start your timers. below is an example of how to start a timer.
-     ret_code_t err_code;
-     err_code = app_timer_start(m_app_timer_id, TIMER_INTERVAL, NULL);
-     APP_ERROR_CHECK(err_code); */
 
 }
 
@@ -526,21 +516,15 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
       NRF_LOG_INFO("Disconnected.");
       err_code = bsp_indication_set(BSP_INDICATE_IDLE);
       APP_ERROR_CHECK(err_code);
-      
-      err_code = app_timer_stop(m_timer_twi_scan_id);
-      APP_ERROR_CHECK(err_code);
-
       break;
 
     case BLE_GAP_EVT_CONNECTED:
       NRF_LOG_INFO("Connected.");
       err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
-      APP_ERROR_CHECK(err_code);
+      //APP_ERROR_CHECK(err_code);
+      UNUSED_PARAMETER(err_code);
+
       m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-
-      err_code = app_timer_start(m_timer_twi_scan_id, TIMER_TWI_SCAN_UPDATE, NULL);
-      APP_ERROR_CHECK(err_code);
-
       break;
 
 #if defined(S132)
@@ -793,11 +777,12 @@ static void power_manage(void)
   APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for starting advertising.
 */
-static void advertising_start(bool erase_bonds)
+static void advertising_start(void * p_erase_bonds)
 {
+  bool erase_bonds = *(bool*)p_erase_bonds;
+
   if (erase_bonds == true)
   {
     delete_bonds();
@@ -811,17 +796,109 @@ static void advertising_start(bool erase_bonds)
   }
 }
 
+#if NRF_LOG_ENABLED
+static void logger_thread(void * arg)
+{
+  UNUSED_PARAMETER(arg);
+
+  while(1)
+  {
+    NRF_LOG_FLUSH();
+
+    vTaskSuspend(NULL);
+  }
+}
+#endif
+
+void vApplicationIdleHook(void)
+{
+  vTaskResume(m_logger_thread);
+}
+
+static void clock_init(void)
+{
+  ret_code_t err_code = nrf_drv_clock_init();
+  APP_ERROR_CHECK(err_code);
+}
+
+static void twi_task_function(void * pvParameter)
+{
+  UNUSED_PARAMETER(pvParameter);
+  uint32_t ulNotificationValue;
+  const TickType_t xMaxBlockTime = pdMS_TO_TICKS(200);
+
+  while (true)
+  {
+    // call update piece location which calls twi driver
+    update_piece_location(0, &m_twi_handle);
+    
+    // notify wait for isr to continue
+    ulNotificationValue = ulTaskNotifyTake(pdFALSE, xMaxBlockTime); 
+    
+    // continue on with our day
+    if (ulNotificationValue == 1)
+    {
+      // good
+    } 
+    else
+    {
+      // bad
+    }
+
+    // delay for 300 ms
+    vTaskDelay(300);
+  }
+}
+
+static void tasks_init(void)
+{
+  BaseType_t xReturned = xTaskCreate(twi_task_function, "TWI0", configMINIMAL_STACK_SIZE, NULL, 2, &m_twi_handle);
+
+  if (xReturned != pdPASS)
+  {
+    NRF_LOG_ERROR("Test task didn't create\n");
+    APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+  } 
+}
 
 /**@brief Function for application main entry.
 */
 int main(void)
 {
   bool erase_bonds;
-  ret_code_t err_code;
 
-  // Initialize.
+  // Initialize clock for FreeRTOS
+  clock_init();
+
+  // Initialize Logger
   log_init();
+
+  // Create a high priority task for logger
+#if NRF_LOG_ENABLED
+  // Start execution.
+  if (pdPASS != xTaskCreate(logger_thread, "LOGGER", 256, NULL, 2, &m_logger_thread))
+  {
+    APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+  }
+#endif
+
+#ifdef NRF_LOG_USES_SYSVIEW
+#if (NRF_LOG_USES_SYSVIEW == 1)
+  sysview_all_irq_log(false);
+
+  // log the radio, SWI2, and SVC calls
+  sysview_irq_log(SWI2_IRQn, true);
+  sysview_irq_log(RADIO_IRQn, true);
+  //sysview_irq_log(RTC1_IRQn, true);
+  sysview_irq_log(SVCall_IRQn, true);
+
+  // enable it
+  sysview_softdevice_enable(true, true);
+#endif
+#endif
+
   timers_init();
+  tasks_init();
   buttons_leds_init(&erase_bonds);
   ble_stack_init();
   gap_params_init();
@@ -831,26 +908,26 @@ int main(void)
   conn_params_init();
   peer_manager_init();
   twi_init();
+  pieces_init();
 
   // Start execution.
-  NRF_LOG_INFO("Template example started.");
+  NRF_LOG_INFO("Digital board started.");
   application_timers_start();
 
-  advertising_start(erase_bonds);
+  // Create a FreeRTOS task for the BLE stack.
+  // The task will run advertising_start() before entering the loop
+  nrf_sdh_freertos_init(advertising_start, &erase_bonds);
+
+  // Start FreeRTOS scheduler
+  vTaskStartScheduler();
 
   // Enter main loop.
   for (;;)
   {
     if (NRF_LOG_PROCESS() == false)
     {
+      NRF_LOG_INFO("time to sleep");
       power_manage();
-    }
-
-    if (scan_test == true)
-    {
-      err_code = read_piece_data();
-      APP_ERROR_CHECK(err_code);
-      scan_test = false;
     }
   }
 }
