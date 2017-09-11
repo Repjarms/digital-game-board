@@ -797,7 +797,6 @@ static void clock_init(void)
 static void twi_task_function(void * pvParameter)
 {
   UNUSED_PARAMETER(pvParameter);
-  uint32_t ulNotificationValue;
   const TickType_t xMaxBlockTime = pdMS_TO_TICKS(200);
   piece_t * current_location;
 
@@ -807,19 +806,12 @@ static void twi_task_function(void * pvParameter)
     update_piece_location(0, &m_twi_handle);
 
     // notify wait for isr to continue
-    ulNotificationValue = ulTaskNotifyTake(pdFALSE, xMaxBlockTime); 
-    
-    // if this task has been notified
-    if (ulNotificationValue == 1)
-    {
-      // send the current piece location to the BLE service
-      current_location = get_current_location();
-      ble_loc_location_update(&p_loc, current_location);
-    } 
-    else
-    {
-      // bad
-    }
+    ulTaskNotifyTake(pdFALSE, xMaxBlockTime); 
+
+    // send the current piece location to the BLE service
+    current_location = get_current_location();
+    ble_loc_location_update(&p_loc, current_location);
+
     vTaskDelay(pdMS_TO_TICKS(300));
   }
 }
@@ -871,6 +863,8 @@ int main(void)
 #endif
 #endif
 
+  // TWI and initial piece state must be initialized before BLE
+  // because this data is used in Service initialization
   twi_init();
   pieces_init();
 
@@ -884,7 +878,7 @@ int main(void)
   services_init();
   conn_params_init();
   peer_manager_init();
- 
+
   // Start execution.
   NRF_LOG_INFO("Digital board started.");
   application_timers_start();
