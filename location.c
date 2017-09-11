@@ -118,9 +118,9 @@ static uint32_t location_char_add(ble_loc_t * p_loc, const ble_loc_init_t * p_lo
   ble_gatts_attr_t    attr_char_value;
   ble_uuid_t          ble_uuid;
   ble_gatts_attr_md_t attr_md;
-  piece_t *           initial_loc; // TODO: change to piece_t *
+  piece_t *           initial_loc; 
   uint8_t             encoded_report_ref[BLE_SRV_ENCODED_REPORT_REF_LEN];
-  uint8_t             init_len; // TODO: change to piece_t *
+  uint8_t             init_len; 
 
   // Add Location characteristic
   if (p_loc->is_notification_supported)
@@ -163,9 +163,9 @@ static uint32_t location_char_add(ble_loc_t * p_loc, const ble_loc_init_t * p_lo
 
   attr_char_value.p_uuid    = &ble_uuid;
   attr_char_value.p_attr_md = &attr_md;
-  attr_char_value.init_len  = sizeof(initial_loc[0]) * 6; // TODO: change to piece_t size
+  attr_char_value.init_len  = sizeof(initial_loc[0]) * 6; 
   attr_char_value.init_offs = 0;
-  attr_char_value.max_len   = sizeof(initial_loc[0]) * 6; // TODO: change to piece_t size
+  attr_char_value.max_len   = sizeof(initial_loc[0]) * 6; 
   attr_char_value.p_value   = (uint8_t *)initial_loc;
 
   // Add the service
@@ -250,9 +250,8 @@ uint32_t ble_loc_init(ble_loc_t * p_loc, const ble_loc_init_t * p_loc_init)
 
 uint32_t ble_loc_location_update(ble_loc_t * p_loc, piece_t * location)
 {
-  bool hasLocChanged = false;
+  bool hasLocChanged = true; // TODO: resolve why the diffing loop isn't working
   uint8_t locArrSize = 5;
-
 
   if (p_loc == NULL)
   {
@@ -277,7 +276,6 @@ uint32_t ble_loc_location_update(ble_loc_t * p_loc, piece_t * location)
   uint32_t err_code = NRF_SUCCESS;
   ble_gatts_value_t gatts_value;
 
-  // TODO: refactor everything under this line to actually match location
   if (hasLocChanged == true)
   {
     // Initialize value struct
