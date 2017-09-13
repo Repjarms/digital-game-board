@@ -233,7 +233,7 @@ uint32_t ble_loc_init(ble_loc_t * p_loc, const ble_loc_init_t * p_loc_init)
   p_loc->evt_handler               = p_loc_init->evt_handler;
   p_loc->conn_handle               = BLE_CONN_HANDLE_INVALID;
   p_loc->is_notification_supported = p_loc_init->support_notification;
-  p_loc->location_last             = get_current_location();
+  p_loc->location_last             = NULL;
 
   // Add service
   BLE_UUID_BLE_ASSIGN(ble_uuid, BLE_UUID_LOCATION_CHAR);
@@ -250,7 +250,7 @@ uint32_t ble_loc_init(ble_loc_t * p_loc, const ble_loc_init_t * p_loc_init)
 
 uint32_t ble_loc_location_update(ble_loc_t * p_loc, piece_t * location)
 {
-  bool hasLocChanged = true; // TODO: resolve why the diffing loop isn't working
+  bool hasLocChanged = false; // TODO: resolve why the diffing loop isn't working
   uint8_t locArrSize = 5;
 
   if (p_loc == NULL)
@@ -291,7 +291,11 @@ uint32_t ble_loc_location_update(ble_loc_t * p_loc, piece_t * location)
     if (err_code == NRF_SUCCESS)
     {
       // Save new location value
-      p_loc->location_last = location; // TODO: may need to loop through and assign
+      for (int i=0; i<locArrSize; i++)
+      {
+        p_loc->location_last[i].x_coord = location[i].x_coord;
+        p_loc->location_last[i].y_coord = location[i].y_coord;
+      }      
     }
     else
     {
