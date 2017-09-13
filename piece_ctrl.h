@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include "app_util_platform.h"
 #include "piece_ctrl.h"
-#include "location.h"
 #include "twi.h"
 
 #include "FreeRTOS.h"
@@ -23,5 +22,7 @@ typedef struct
 void pieces_init();
 
 void update_piece_location(uint8_t * idx, TaskHandle_t task);
+
+piece_t * get_current_location();
 
 #endif /* end of include guard: PIECE_CTRL_H_XQWI1BV4 */

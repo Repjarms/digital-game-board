@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include "app_util_platform.h"
 #include "piece_ctrl.h"
-#include "location.h"
 #include "twi.h"
 
 #include "FreeRTOS.h"
@@ -46,6 +45,11 @@ void pieces_init()
   piece_arr[5] = piece_six;
 }
 
+piece_t * get_current_location()
+{
+  return piece_arr;
+}
+
 void update_piece_location(uint8_t * idx, TaskHandle_t task)
 {
   piece_t * piece = &piece_arr[*idx];
@@ -53,5 +57,4 @@ void update_piece_location(uint8_t * idx, TaskHandle_t task)
   ret_code_t err_code;
   err_code = read_piece_data(piece);
   APP_ERROR_CHECK(err_code); 
-  //NRF_LOG_INFO("Piece Data: %d\n", piece->x_coord);
 }

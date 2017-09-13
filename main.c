@@ -354,38 +354,11 @@ break;
 */
 static void services_init(void)
 {
-  /* YOUR_JOB: Add code to initialize the services used by the application.
-     ret_code_t                         err_code;
-     ble_xxs_init_t                     xxs_init;
-     ble_yys_init_t                     yys_init;
-
-  // Initialize XXX Service.
-  memset(&xxs_init, 0, sizeof(xxs_init));
-
-  xxs_init.evt_handler                = NULL;
-  xxs_init.is_xxx_notify_supported    = true;
-  xxs_init.ble_xx_initial_value.level = 100;
-
-  err_code = ble_bas_init(&m_xxs, &xxs_init);
-  APP_ERROR_CHECK(err_code);
-
-  // Initialize YYY Service.
-  memset(&yys_init, 0, sizeof(yys_init));
-  yys_init.evt_handler                  = on_yys_evt;
-  yys_init.ble_yy_initial_value.counter = 0;
-
-  err_code = ble_yy_service_init(&yys_init, &yy_init);
-  APP_ERROR_CHECK(err_code);
-  */
-
   ret_code_t err_code;
 
   /* Initialize Location Service */
   err_code = ble_loc_init(&p_loc, &p_loc_init);
   APP_ERROR_CHECK(err_code);
-
-  err_code = ble_loc_location_update(&p_loc, 15);
-  NRF_LOG_INFO("%d\n", err_code);
 }
 
 
@@ -824,29 +797,22 @@ static void clock_init(void)
 static void twi_task_function(void * pvParameter)
 {
   UNUSED_PARAMETER(pvParameter);
-  uint32_t ulNotificationValue;
   const TickType_t xMaxBlockTime = pdMS_TO_TICKS(200);
+  piece_t * current_location;
 
   while (true)
   {
     // call update piece location which calls twi driver
     update_piece_location(0, &m_twi_handle);
-    
-    // notify wait for isr to continue
-    ulNotificationValue = ulTaskNotifyTake(pdFALSE, xMaxBlockTime); 
-    
-    // continue on with our day
-    if (ulNotificationValue == 1)
-    {
-      // good
-    } 
-    else
-    {
-      // bad
-    }
 
-    // delay for 300 ms
-    vTaskDelay(300);
+    // notify wait for isr to continue
+    ulTaskNotifyTake(pdFALSE, xMaxBlockTime); 
+
+    // send the current piece location to the BLE service
+    current_location = get_current_location();
+    ble_loc_location_update(&p_loc, current_location);
+
+    vTaskDelay(pdMS_TO_TICKS(300));
   }
 }
 
@@ -897,6 +863,11 @@ int main(void)
 #endif
 #endif
 
+  // TWI and initial piece state must be initialized before BLE
+  // because this data is used in Service initialization
+  twi_init();
+  pieces_init();
+
   timers_init();
   tasks_init();
   buttons_leds_init(&erase_bonds);
@@ -907,8 +878,6 @@ int main(void)
   services_init();
   conn_params_init();
   peer_manager_init();
-  twi_init();
-  pieces_init();
 
   // Start execution.
   NRF_LOG_INFO("Digital board started.");
