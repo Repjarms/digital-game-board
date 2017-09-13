@@ -1,6 +1,7 @@
 /* TWI source file */
 
 #include <stdio.h>
+#include <stdbool.h>
 #include "boards.h"
 #include "app_util_platform.h"
 #include "app_error.h"
@@ -21,6 +22,7 @@
 #define TWI_SLAVE_ADDR     0x01
 
 TaskHandle_t xTaskToNotify;
+piece_t * current_piece;
 
 /* TWI Instance */
 static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
@@ -31,10 +33,24 @@ static uint8_t arr_size = sizeof(m_location) / sizeof(m_location[0]);
 
 static volatile bool twi_xfer_done = false;
 
+static void assign_location_value(bool did_twi_ack)
+{
+  if (did_twi_ack == true)
+  {
+    current_piece->x_coord = m_location[0];
+    current_piece->y_coord = m_location[1];
+  }
+  else
+  {
+    current_piece->x_coord = 255;
+    current_piece->y_coord = 255;
+  }
+}
+
 __STATIC_INLINE void data_handler(uint8_t * location)
 {
   NRF_LOG_INFO("Location is x: %d\t y: %d\t id: %d\n", location[0], location[1], location[2]);
-  
+
 }
 
 /**
@@ -47,8 +63,10 @@ void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
     case NRF_DRV_TWI_EVT_DONE:
 
       twi_xfer_done = true;
-      
+
       BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+      assign_location_value(true);
 
       // notify from isr
       vTaskNotifyGiveFromISR(xTaskToNotify, &xHigherPriorityTaskWoken);
@@ -61,6 +79,22 @@ void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
 
       break;
     default:
+
+      twi_xfer_done = true;
+
+      xHigherPriorityTaskWoken = pdFALSE;
+
+      assign_location_value(false);
+
+      // notify from isr
+      vTaskNotifyGiveFromISR(xTaskToNotify, &xHigherPriorityTaskWoken);
+
+      // clear the task handle until the next notifyWait
+      xTaskToNotify = NULL;
+
+      // ensure that context switch goes to the highest priority task
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+
       break;
   }
 }
@@ -93,13 +127,10 @@ ret_code_t read_piece_data(piece_t * piece, TaskHandle_t task)
 {
   twi_xfer_done = false;
 
+  current_piece = piece;
   xTaskToNotify = task;
 
   ret_code_t err_code = nrf_drv_twi_rx(&m_twi, piece->id, &m_location[0], arr_size);
-  APP_ERROR_CHECK(err_code);
-
-  piece->x_coord = m_location[0];
-  piece->y_coord = m_location[1];
 
   return err_code;
 }
