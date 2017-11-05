@@ -250,7 +250,7 @@ uint32_t ble_loc_init(ble_loc_t * p_loc, const ble_loc_init_t * p_loc_init)
 
 uint32_t ble_loc_location_update(ble_loc_t * p_loc, piece_t * location)
 {
-  bool hasLocChanged = false; // TODO: resolve why the diffing loop isn't working
+  bool hasLocChanged = false; 
   uint8_t locArrSize = 5;
 
   if (p_loc == NULL)

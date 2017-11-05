@@ -56,5 +56,5 @@ void update_piece_location(uint8_t * idx, TaskHandle_t task)
 
   ret_code_t err_code;
   err_code = read_piece_data(piece);
-  APP_ERROR_CHECK(err_code); 
+  UNUSED_VARIABLE(err_code);
 }
