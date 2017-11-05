@@ -86,6 +86,7 @@
 #include "location.h"
 #include "twi.h"
 #include "piece_ctrl.h"
+#include "led.h"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
@@ -825,6 +826,8 @@ static void tasks_init(void)
     NRF_LOG_ERROR("Test task didn't create\n");
     APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
   } 
+
+  /* TODO: create a new task for leds */
 }
 
 /**@brief Function for application main entry.
@@ -868,9 +871,11 @@ int main(void)
   twi_init();
   pieces_init();
 
+  // Initialize drivers and BLE functions
   timers_init();
   tasks_init();
   buttons_leds_init(&erase_bonds);
+  board_gpio_init();
   ble_stack_init();
   gap_params_init();
   gatt_init();

@@ -57,6 +57,7 @@ SRC_FILES += $(SDK_ROOT)/components/libraries/bsp/bsp_btn_ble.c
 SRC_FILES += $(SDK_ROOT)/components/drivers_nrf/twi_master/nrf_drv_twi.c 
 SRC_FILES += $(SDK_ROOT)/components/drivers_nrf/uart/nrf_drv_uart.c 
 SRC_FILES += $(SDK_ROOT)/components/libraries/bsp/bsp_nfc.c 
+SRC_FILES += $(PROJ_DIR)/led.c
 SRC_FILES += $(PROJ_DIR)/piece_ctrl.c 
 SRC_FILES += $(PROJ_DIR)/location.c 
 SRC_FILES += $(PROJ_DIR)/twi.c 
